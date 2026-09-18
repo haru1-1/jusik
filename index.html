@@ -4,6 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>글로벌 모의투자 App (실시간 시세 연동)</title>
+  
+  <!-- PWA 매니페스트 (앱 설치 및 아이콘 설정) -->
+  <link rel="manifest" id="manifest-placeholder">
+  <meta name="theme-color" content="#0b0e14">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="모의투자">
+
   <style>
     :root {
       --bg: #0b0e14;
@@ -30,6 +38,17 @@
     }
     .header-card h1 { font-size: 1.25rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
     .asset-val { font-size: 1.5rem; font-weight: 800; color: #10b981; margin-top: 4px; }
+
+    /* PWA Install Button Header */
+    .header-right { display: flex; align-items: center; gap: 16px; }
+    .install-btn {
+      display: none; align-items: center; gap: 6px;
+      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      color: #fff; border: none; padding: 8px 14px; border-radius: 20px;
+      font-size: 0.85rem; font-weight: 700; cursor: pointer;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); transition: transform 0.2s;
+    }
+    .install-btn:hover { transform: translateY(-2px); }
 
     .status-badge {
       display: inline-flex; align-items: center; gap: 6px;
@@ -135,9 +154,14 @@
         <span class="status-badge" id="api-status"><span class="status-dot"></span>실시간 API 동기화 중</span>
       </div>
     </div>
-    <div style="text-align: right;">
-      <div style="font-size: 0.8rem; color: var(--sub);">총 평가 자산</div>
-      <div class="asset-val" id="header-total-asset">1,000,000,000 원</div>
+    <div class="header-right">
+      <button class="install-btn" id="install-btn" onclick="installApp()">
+        <span>📲</span> 앱 설치
+      </button>
+      <div style="text-align: right;">
+        <div style="font-size: 0.8rem; color: var(--sub);">총 평가 자산</div>
+        <div class="asset-val" id="header-total-asset">1,000,000,000 원</div>
+      </div>
     </div>
   </div>
 
@@ -237,13 +261,61 @@
   </div>
 
   <script>
+    // -------------------------------------------------------------
+    // PWA Manifest 및 앱 아이콘 Dynamic Injector
+    // -------------------------------------------------------------
+    const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none"><rect width="512" height="512" rx="128" fill="#151921"/><path d="M112 352L208 240L288 304L400 160" stroke="#ff4d4d" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/><path d="M320 160H400V240" stroke="#ff4d4d" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    const iconUrl = 'data:image/svg+xml;base64,' + btoa(svgIcon);
+
+    // Apple Touch Icon 추가
+    const appleIcon = document.createElement('link');
+    appleIcon.rel = 'apple-touch-icon';
+    appleIcon.href = iconUrl;
+    document.head.appendChild(appleIcon);
+
+    // Manifest JSON 생성
+    const manifestData = {
+      name: "글로벌 모의투자 App",
+      short_name: "모의투자",
+      start_url: ".",
+      display: "standalone",
+      background_color: "#0b0e14",
+      theme_color: "#0b0e14",
+      icons: [
+        { src: iconUrl, sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }
+      ]
+    };
+    const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
+    document.getElementById('manifest-placeholder').href = URL.createObjectURL(manifestBlob);
+
+    // PWA 설치 프롬프트 처리
+    let deferredPrompt = null;
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const btn = document.getElementById('install-btn');
+      if (btn) btn.style.display = 'inline-flex';
+    });
+
+    async function installApp() {
+      if (!deferredPrompt) return;
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') {
+        document.getElementById('install-btn').style.display = 'none';
+      }
+      deferredPrompt = null;
+    }
+
+    // -------------------------------------------------------------
+    // 모의투자 메인 로직
+    // -------------------------------------------------------------
     let cash = 1000000000;
     let portfolio = {};
     let selected = null;
     let currentFilter = 'all';
     let searchQuery = '';
 
-    // 코스피/코스닥 실제 티커 마스터 (Yahoo Finance 심볼 기반 .KS / .KQ)
     const rawKospi = [
       { name: "삼성전자", symbol: "005930", yahoo: "005930.KS", defaultPrice: 260000 },
       { name: "SK하이닉스", symbol: "000660", yahoo: "000660.KS", defaultPrice: 192000 },
@@ -329,7 +401,6 @@
 
     let marketData = [];
 
-    // Master 생성
     rawKospi.forEach((item, idx) => {
       marketData.push({
         id: `KOSPI_${idx + 1}`,
@@ -359,13 +430,10 @@
     render();
     updateDashboard();
 
-    // 외부 실시간 API 호출 (CORS 프록시 우회)
     async function fetchRealtimePrices() {
       try {
         const yahooSymbols = marketData.map(s => s.yahoo).join(',');
         const targetUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(yahooSymbols)}`;
-        
-        // CORS 프록시를 통해 브라우저 직접 호출
         const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`);
         if (!res.ok) throw new Error('API 응답 이상');
 
@@ -387,7 +455,6 @@
           throw new Error('데이터 구조 비정상');
         }
       } catch (err) {
-        // API 연동 실패 시 시뮬레이션 모드 (Fallback)
         marketData.forEach(s => {
           const delta = (Math.random() - 0.49) * 0.4;
           s.rate = parseFloat((s.rate + delta).toFixed(2));
@@ -403,7 +470,6 @@
       updateDashboard();
     }
 
-    // 최초 실시간 수집 실행 및 3초 주기 자동 동기화
     fetchRealtimePrices();
     setInterval(fetchRealtimePrices, 3000);
 
