@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>글로벌 모의투자 App (실시간 시세 연동)</title>
+  <style>
+    :root {
+      --bg: #0b0e14;
+      --card: #151921;
+      --card-hover: #1c222d;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #f3f4f6;
+      --sub: #9ca3af;
+      --up: #ff4d4d;
+      --down: #458fff;
+      --accent: #6366f1;
+      --accent-light: rgba(99, 102, 241, 0.15);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif; }
+    body { background: var(--bg); color: var(--text); padding: 16px; max-width: 1200px; margin: 0 auto; }
+
+    /* Header & Summary Section */
+    .header-card {
+      background: linear-gradient(135deg, #1e1b4b 0%, #151921 100%);
+      border: 1px solid rgba(99, 102, 241, 0.3);
+      padding: 20px 24px; border-radius: 16px;
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+    }
+    .header-card h1 { font-size: 1.25rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
+    .asset-val { font-size: 1.5rem; font-weight: 800; color: #10b981; margin-top: 4px; }
+
+    .status-badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      font-size: 0.75rem; padding: 4px 10px; border-radius: 12px;
+      background: rgba(16, 185, 129, 0.15); color: #10b981; font-weight: 600;
+    }
+    .status-dot { width: 6px; height: 6px; border-radius: 50%; background: #10b981; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+
+    /* Main Navigation */
+    .main-nav { display: flex; gap: 10px; margin-bottom: 16px; }
+    .main-nav button {
+      flex: 1; padding: 12px; background: var(--card); color: var(--sub);
+      border: 1px solid var(--border); border-radius: 12px; font-size: 0.95rem;
+      font-weight: 700; cursor: pointer; transition: all 0.2s ease;
+    }
+    .main-nav button.active {
+      background: var(--accent); color: #fff; border-color: var(--accent);
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+
+    /* Search & Filter Bar */
+    .filter-wrapper { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+    .search-input {
+      width: 100%; padding: 12px 16px; background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; color: #fff; font-size: 0.95rem; outline: none; transition: border 0.2s;
+    }
+    .search-input:focus { border-color: var(--accent); }
+
+    .filter-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+    .filter-bar button {
+      background: rgba(255,255,255,0.04); color: var(--sub); border: 1px solid var(--border);
+      padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; white-space: nowrap; transition: all 0.2s;
+    }
+    .filter-bar button.active { background: #fff; color: #000; border-color: #fff; }
+
+    /* Layout Structure */
+    .layout { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    @media (min-width: 900px) { .layout { grid-template-columns: 1fr 360px; } }
+
+    /* Stock List Card Style */
+    .stock-list { display: flex; flex-direction: column; gap: 10px; max-height: 70vh; overflow-y: auto; padding-right: 4px; }
+    .stock-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+      padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;
+      cursor: pointer; transition: all 0.15s ease;
+    }
+    .stock-card:hover { background: var(--card-hover); border-color: rgba(255, 255, 255, 0.2); transform: translateY(-1px); }
+    
+    .badge { font-size: 0.7rem; padding: 3px 8px; border-radius: 6px; margin-right: 6px; font-weight: 700; display: inline-block; }
+    .badge-kospi { background: rgba(255, 77, 77, 0.15); color: var(--up); }
+    .badge-kosdaq { background: rgba(69, 143, 255, 0.15); color: var(--down); }
+
+    .up { color: var(--up); }
+    .down { color: var(--down); }
+
+    /* Side Panels */
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin-bottom: 16px; }
+    .panel-title { font-size: 0.9rem; color: var(--sub); font-weight: 600; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    
+    .ai-box {
+      background: var(--accent-light); border: 1px solid var(--accent);
+      padding: 14px; border-radius: 12px; font-size: 0.85rem; line-height: 1.5; color: #e0e7ff;
+    }
+
+    input[type="number"] {
+      width: 100%; padding: 12px; background: rgba(0, 0, 0, 0.3);
+      border: 1px solid var(--border); color: #fff; margin: 10px 0;
+      text-align: right; border-radius: 10px; font-size: 1rem; font-weight: 600;
+    }
+    input[type="number"]:focus { outline: none; border-color: var(--accent); }
+
+    .btn-group { display: flex; gap: 10px; margin-top: 10px; }
+    .btn-group button {
+      flex: 1; padding: 14px; border: none; border-radius: 10px;
+      font-size: 0.95rem; font-weight: 700; color: #fff; cursor: pointer; transition: opacity 0.2s;
+    }
+    .btn-group button:hover { opacity: 0.9; }
+    .buy { background: var(--up); box-shadow: 0 4px 12px rgba(255, 77, 77, 0.2); }
+    .sell { background: var(--down); box-shadow: 0 4px 12px rgba(69, 143, 255, 0.2); }
+
+    /* Dashboard UI */
+    .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .dash-card { background: var(--card); border: 1px solid var(--border); padding: 18px; border-radius: 14px; }
+    .dash-card .title { font-size: 0.8rem; color: var(--sub); font-weight: 600; }
+    .dash-card .number { font-size: 1.25rem; font-weight: 700; margin-top: 6px; }
+
+    .portfolio-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.88rem; }
+    .portfolio-table th, .portfolio-table td { padding: 12px; text-align: right; border-bottom: 1px solid var(--border); }
+    .portfolio-table th:first-child, .portfolio-table td:first-child { text-align: left; }
+    .portfolio-table th { color: var(--sub); font-weight: 600; font-size: 0.8rem; }
+  </style>
+</head>
+<body>
+
+  <!-- Header Card -->
+  <div class="header-card">
+    <div>
+      <h1>📈 국내 모의투자</h1>
+      <div style="font-size: 0.8rem; color: var(--sub); margin-top: 4px; display: flex; align-items: center; gap: 8px;">
+        <span>KOSPI / KOSDAQ 실시간 시뮬레이션</span>
+        <span class="status-badge" id="api-status"><span class="status-dot"></span>실시간 API 동기화 중</span>
+      </div>
+    </div>
+    <div style="text-align: right;">
+      <div style="font-size: 0.8rem; color: var(--sub);">총 평가 자산</div>
+      <div class="asset-val" id="header-total-asset">1,000,000,000 원</div>
+    </div>
+  </div>
+
+  <!-- Main Tabs -->
+  <div class="main-nav">
+    <button class="active" onclick="switchMainTab('market', this)">📊 주식 거래소</button>
+    <button onclick="switchMainTab('dashboard', this)">💼 내 자산 리포트</button>
+  </div>
+
+  <!-- Tab 1: 주식 거래소 -->
+  <div id="tab-market">
+    <div class="filter-wrapper">
+      <input type="text" id="search-input" class="search-input" placeholder="🔍 종목명 또는 종목코드(6자리) 검색..." oninput="onSearchInput()">
+      <div class="filter-bar">
+        <button class="active" onclick="setFilter('all', this)">전체</button>
+        <button onclick="setFilter('kospi', this)">🔴 코스피 (KOSPI)</button>
+        <button onclick="setFilter('kosdaq', this)">🔵 코스닥 (KOSDAQ)</button>
+        <button onclick="setFilter('gainers', this)">🔥 급상승</button>
+        <button onclick="setFilter('losers', this)">📉 급하락</button>
+      </div>
+    </div>
+
+    <div class="layout">
+      <div class="stock-list" id="list"></div>
+
+      <div>
+        <!-- AI Analysis -->
+        <div class="panel">
+          <div class="panel-title">🤖 AI 종목 진단 리포트</div>
+          <div id="ai-title" style="font-size: 1.05rem; font-weight: 700; margin-bottom: 8px;">종목을 선택하세요</div>
+          <div class="ai-box" id="ai-desc">목록에서 종목을 선택하면 실시간 수급 및 변동 폭을 분석해 드립니다.</div>
+        </div>
+
+        <!-- Trading Panel -->
+        <div class="panel">
+          <div class="panel-title">⚡ 빠른 주문</div>
+          <div id="target-name" style="font-weight: 700; color: var(--sub);">선택된 종목 없음</div>
+          <input type="number" id="qty" value="1" min="1" oninput="calcTotal()">
+          <div style="font-size: 0.85rem; text-align: right; color: var(--sub); margin-bottom: 12px;">
+            주문 예정 금액: <span id="total-price" style="color: #fff; font-weight: 700;">0</span> 원
+          </div>
+          <div class="btn-group">
+            <button class="buy" onclick="trade('BUY')">매수</button>
+            <button class="sell" onclick="trade('SELL')">매도</button>
+          </div>
+        </div>
+
+        <!-- Quick Balance Panel -->
+        <div class="panel">
+          <div class="panel-title">보유 요약</div>
+          <div id="portfolio-summary" style="font-size: 0.85rem; color: var(--sub);">보유한 주식이 없습니다.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 2: 자산 리포트 대시보드 -->
+  <div id="tab-dashboard" style="display: none;">
+    <div class="dash-grid">
+      <div class="dash-card">
+        <div class="title">예수금 (현금)</div>
+        <div class="number" id="dash-cash">0 원</div>
+      </div>
+      <div class="dash-card">
+        <div class="title">총 주식 평가금액</div>
+        <div class="number" id="dash-eval">0 원</div>
+      </div>
+      <div class="dash-card">
+        <div class="title">총 투자 원금</div>
+        <div class="number" id="dash-buy">0 원</div>
+      </div>
+      <div class="dash-card">
+        <div class="title">실시간 평가 손익 / 수익률</div>
+        <div class="number" id="dash-profit">0 원 (0.00%)</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">📊 보유 종목 실시간 평가 현황</div>
+      <table class="portfolio-table">
+        <thead>
+          <tr>
+            <th>종목명</th>
+            <th>시장</th>
+            <th>보유수량</th>
+            <th>평균단가</th>
+            <th>현재가</th>
+            <th>평가금액</th>
+            <th>손익률</th>
+          </tr>
+        </thead>
+        <tbody id="dash-list">
+          <tr><td colspan="7" style="text-align:center; color:var(--sub); padding:30px;">보유 중인 주식이 없습니다.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    let cash = 1000000000;
+    let portfolio = {};
+    let selected = null;
+    let currentFilter = 'all';
+    let searchQuery = '';
+
+    // 코스피/코스닥 실제 티커 마스터 (Yahoo Finance 심볼 기반 .KS / .KQ)
+    const rawKospi = [
+      { name: "삼성전자", symbol: "005930", yahoo: "005930.KS", defaultPrice: 260000 },
+      { name: "SK하이닉스", symbol: "000660", yahoo: "000660.KS", defaultPrice: 192000 },
+      { name: "LG에너지솔루션", symbol: "373220", yahoo: "373220.KS", defaultPrice: 380000 },
+      { name: "삼성바이오로직스", symbol: "207940", yahoo: "207940.KS", defaultPrice: 980000 },
+      { name: "현대차", symbol: "005380", yahoo: "005380.KS", defaultPrice: 235000 },
+      { name: "기아", symbol: "000270", yahoo: "000270.KS", defaultPrice: 104000 },
+      { name: "셀트리온", symbol: "068270", yahoo: "068270.KS", defaultPrice: 198000 },
+      { name: "KB금융", symbol: "105560", yahoo: "105560.KS", defaultPrice: 82000 },
+      { name: "POSCO홀딩스", symbol: "005490", yahoo: "005490.KS", defaultPrice: 375000 },
+      { name: "NAVER", symbol: "035420", yahoo: "035420.KS", defaultPrice: 172000 },
+      { name: "신한지주", symbol: "055550", yahoo: "055550.KS", defaultPrice: 56000 },
+      { name: "삼성물산", symbol: "028260", yahoo: "028260.KS", defaultPrice: 142000 },
+      { name: "현대모비스", symbol: "012330", yahoo: "012330.KS", defaultPrice: 220000 },
+      { name: "카카오", symbol: "035720", yahoo: "035720.KS", defaultPrice: 39500 },
+      { name: "하나금융지주", symbol: "086790", yahoo: "086790.KS", defaultPrice: 61000 },
+      { name: "LG화학", symbol: "051910", yahoo: "051910.KS", defaultPrice: 320000 },
+      { name: "메리츠금융지주", symbol: "138040", yahoo: "138040.KS", defaultPrice: 91000 },
+      { name: "삼성생명", symbol: "032830", yahoo: "032830.KS", defaultPrice: 95000 },
+      { name: "한국전력", symbol: "015760", yahoo: "015760.KS", defaultPrice: 21000 },
+      { name: "HD현대중공업", symbol: "329180", yahoo: "329180.KS", defaultPrice: 185000 },
+      { name: "LG전자", symbol: "066570", yahoo: "066570.KS", defaultPrice: 96000 },
+      { name: "SK이노베이션", symbol: "096770", yahoo: "096770.KS", defaultPrice: 112000 },
+      { name: "KT&G", symbol: "033780", yahoo: "033780.KS", defaultPrice: 108000 },
+      { name: "삼성화재", symbol: "000810", yahoo: "000810.KS", defaultPrice: 360000 },
+      { name: "카카오뱅크", symbol: "377300", yahoo: "377300.KS", defaultPrice: 22500 },
+      { name: "HMM", symbol: "011200", yahoo: "011200.KS", defaultPrice: 18200 },
+      { name: "삼성SDI", symbol: "006400", yahoo: "006400.KS", defaultPrice: 340000 },
+      { name: "두산에너빌리티", symbol: "034020", yahoo: "034020.KS", defaultPrice: 20500 },
+      { name: "크래프톤", symbol: "259960", yahoo: "259960.KS", defaultPrice: 320000 },
+      { name: "HD한국조선해양", symbol: "009540", yahoo: "009540.KS", defaultPrice: 178000 },
+      { name: "한화에어로스페이스", symbol: "012450", yahoo: "012450.KS", defaultPrice: 290000 },
+      { name: "포스코퓨처엠", symbol: "003670", yahoo: "003670.KS", defaultPrice: 225000 },
+      { name: "SK텔레콤", symbol: "017670", yahoo: "017670.KS", defaultPrice: 56000 },
+      { name: "기업은행", symbol: "024110", yahoo: "024110.KS", defaultPrice: 14000 },
+      { name: "S-Oil", symbol: "010950", yahoo: "010950.KS", defaultPrice: 65000 },
+      { name: "고려아연", symbol: "010130", yahoo: "010130.KS", defaultPrice: 720000 },
+      { name: "KT", symbol: "030200", yahoo: "030200.KS", defaultPrice: 41000 },
+      { name: "한화오션", symbol: "042660", yahoo: "042660.KS", defaultPrice: 28000 },
+      { name: "우리금융지주", symbol: "316140", yahoo: "316140.KS", defaultPrice: 16000 },
+      { name: "포스코DX", symbol: "022100", yahoo: "022100.KS", defaultPrice: 28000 },
+      { name: "대한항공", symbol: "003490", yahoo: "003490.KS", defaultPrice: 23000 },
+      { name: "에코프로머티", symbol: "450080", yahoo: "450080.KS", defaultPrice: 85000 },
+      { name: "하이브", symbol: "352820", yahoo: "352820.KS", defaultPrice: 180000 },
+      { name: "한미반도체", symbol: "042700", yahoo: "042700.KS", defaultPrice: 115000 },
+      { name: "현대글로비스", symbol: "086280", yahoo: "086280.KS", defaultPrice: 125000 },
+      { name: "삼성증권", symbol: "016360", yahoo: "016360.KS", defaultPrice: 45000 },
+      { name: "NH투자증권", symbol: "005940", yahoo: "005940.KS", defaultPrice: 13500 }
+    ];
+
+    const rawKosdaq = [
+      { name: "에코프로비엠", symbol: "247540", yahoo: "247540.KQ", defaultPrice: 185000 },
+      { name: "에코프로", symbol: "086520", yahoo: "086520.KQ", defaultPrice: 90000 },
+      { name: "알테오젠", symbol: "196170", yahoo: "196170.KQ", defaultPrice: 310000 },
+      { name: "HLB", symbol: "028300", yahoo: "028300.KQ", defaultPrice: 85000 },
+      { name: "삼천당제약", symbol: "000250", yahoo: "000250.KQ", defaultPrice: 140000 },
+      { name: "리노공업", symbol: "058470", yahoo: "058470.KQ", defaultPrice: 205000 },
+      { name: "레인보우로보틱스", symbol: "277810", yahoo: "277810.KQ", defaultPrice: 135000 },
+      { name: "셀트리온제약", symbol: "068760", yahoo: "068760.KQ", defaultPrice: 68000 },
+      { name: "클래시스", symbol: "214150", yahoo: "214150.KQ", defaultPrice: 52000 },
+      { name: "펄어비스", symbol: "263750", yahoo: "263750.KQ", defaultPrice: 38000 },
+      { name: "JYP Ent.", symbol: "035900", yahoo: "035900.KQ", defaultPrice: 55000 },
+      { name: "에스엠", symbol: "041510", yahoo: "041510.KQ", defaultPrice: 72000 },
+      { name: "엔씨소프트", symbol: "036570", yahoo: "036570.KQ", defaultPrice: 195000 },
+      { name: "위메이드", symbol: "112040", yahoo: "112040.KQ", defaultPrice: 38000 },
+      { name: "카카오게임즈", symbol: "293490", yahoo: "293490.KQ", defaultPrice: 18500 },
+      { name: "휴젤", symbol: "145020", yahoo: "145020.KQ", defaultPrice: 260000 },
+      { name: "실리콘투", symbol: "257720", yahoo: "257720.KQ", defaultPrice: 42000 },
+      { name: "리가켐바이오", symbol: "141080", yahoo: "141080.KQ", defaultPrice: 98000 },
+      { name: "동진쎄미켐", symbol: "005290", yahoo: "005290.KQ", defaultPrice: 34000 },
+      { name: "솔브레인", symbol: "357780", yahoo: "357780.KQ", defaultPrice: 240000 },
+      { name: "원익IPS", symbol: "240810", yahoo: "240810.KQ", defaultPrice: 31000 },
+      { name: "주성엔지니어링", symbol: "036930", yahoo: "036930.KQ", defaultPrice: 30000 },
+      { name: "하나마이크론", symbol: "067310", yahoo: "067310.KQ", defaultPrice: 18000 },
+      { name: "이오테크닉스", symbol: "039030", yahoo: "039030.KQ", defaultPrice: 165000 },
+      { name: "파두", symbol: "440110", yahoo: "440110.KQ", defaultPrice: 17500 },
+      { name: "HPSP", symbol: "403870", yahoo: "403870.KQ", defaultPrice: 38000 },
+      { name: "삼양식품", symbol: "003230", yahoo: "003230.KS", defaultPrice: 580000 },
+      { name: "엔켐", symbol: "223310", yahoo: "223310.KQ", defaultPrice: 195000 },
+      { name: "오스코텍", symbol: "039200", yahoo: "039200.KQ", defaultPrice: 38000 },
+      { name: "테크윙", symbol: "089030", yahoo: "089030.KQ", defaultPrice: 42000 }
+    ];
+
+    let marketData = [];
+
+    // Master 생성
+    rawKospi.forEach((item, idx) => {
+      marketData.push({
+        id: `KOSPI_${idx + 1}`,
+        symbol: item.symbol,
+        yahoo: item.yahoo,
+        name: item.name,
+        market: 'KOSPI',
+        price: item.defaultPrice,
+        rate: 0.0,
+        volume: Math.floor(Math.random() * 8000 + 500) * 100000000
+      });
+    });
+
+    rawKosdaq.forEach((item, idx) => {
+      marketData.push({
+        id: `KOSDAQ_${idx + 1}`,
+        symbol: item.symbol,
+        yahoo: item.yahoo,
+        name: item.name,
+        market: 'KOSDAQ',
+        price: item.defaultPrice,
+        rate: 0.0,
+        volume: Math.floor(Math.random() * 6000 + 300) * 100000000
+      });
+    });
+
+    render();
+    updateDashboard();
+
+    // 외부 실시간 API 호출 (CORS 프록시 우회)
+    async function fetchRealtimePrices() {
+      try {
+        const yahooSymbols = marketData.map(s => s.yahoo).join(',');
+        const targetUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(yahooSymbols)}`;
+        
+        // CORS 프록시를 통해 브라우저 직접 호출
+        const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`);
+        if (!res.ok) throw new Error('API 응답 이상');
+
+        const json = await res.json();
+        const quotes = json?.quoteResponse?.result;
+
+        if (quotes && quotes.length > 0) {
+          quotes.forEach(q => {
+            const item = marketData.find(s => s.yahoo === q.symbol);
+            if (item && q.regularMarketPrice) {
+              item.price = Math.round(q.regularMarketPrice);
+              item.rate = parseFloat((q.regularMarketChangePercent || 0).toFixed(2));
+            }
+          });
+
+          document.getElementById('api-status').innerHTML = `<span class="status-dot"></span>실시간 API 연동 완료 (${new Date().toLocaleTimeString('ko-KR')})`;
+          document.getElementById('api-status').style.color = '#10b981';
+        } else {
+          throw new Error('데이터 구조 비정상');
+        }
+      } catch (err) {
+        // API 연동 실패 시 시뮬레이션 모드 (Fallback)
+        marketData.forEach(s => {
+          const delta = (Math.random() - 0.49) * 0.4;
+          s.rate = parseFloat((s.rate + delta).toFixed(2));
+          s.price = Math.max(100, Math.round(s.price * (1 + delta * 0.01)));
+        });
+
+        document.getElementById('api-status').innerHTML = `<span class="status-dot" style="background:#f59e0b;"></span>실시간 시뮬레이션 모드`;
+        document.getElementById('api-status').style.color = '#f59e0b';
+      }
+
+      render();
+      updateSelectedUI();
+      updateDashboard();
+    }
+
+    // 최초 실시간 수집 실행 및 3초 주기 자동 동기화
+    fetchRealtimePrices();
+    setInterval(fetchRealtimePrices, 3000);
+
+    function switchMainTab(tab, btn) {
+      document.querySelectorAll('.main-nav button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      if (tab === 'market') {
+        document.getElementById('tab-market').style.display = 'block';
+        document.getElementById('tab-dashboard').style.display = 'none';
+      } else {
+        document.getElementById('tab-market').style.display = 'none';
+        document.getElementById('tab-dashboard').style.display = 'block';
+        updateDashboard();
+      }
+    }
+
+    function onSearchInput() {
+      searchQuery = document.getElementById('search-input').value.trim().toLowerCase();
+      render();
+    }
+
+    function render() {
+      let data = [...marketData];
+
+      if (searchQuery) {
+        data = data.filter(s => s.name.toLowerCase().includes(searchQuery) || s.symbol.includes(searchQuery));
+      }
+
+      if (currentFilter === 'kospi') data = data.filter(s => s.market === 'KOSPI');
+      if (currentFilter === 'kosdaq') data = data.filter(s => s.market === 'KOSDAQ');
+
+      if (currentFilter === 'gainers') {
+        data.sort((a, b) => b.rate - a.rate);
+      } else if (currentFilter === 'losers') {
+        data.sort((a, b) => a.rate - b.rate);
+      } else if (currentFilter === 'all') {
+        data.sort((a, b) => b.volume - a.volume);
+      }
+
+      const list = document.getElementById('list');
+      list.innerHTML = '';
+
+      if (data.length === 0) {
+        list.innerHTML = `<div style="text-align:center; padding: 40px; color:var(--sub);">검색 결과가 없습니다.</div>`;
+        return;
+      }
+
+      data.forEach(s => {
+        const el = document.createElement('div');
+        el.className = 'stock-card';
+        el.onclick = () => selectStock(s);
+        el.innerHTML = `
+          <div>
+            <div>
+              <span class="badge ${s.market === 'KOSPI' ? 'badge-kospi' : 'badge-kosdaq'}">${s.market}</span>
+              <strong>${s.name}</strong> <span style="font-size:0.75rem; color:var(--sub);">${s.symbol}</span>
+            </div>
+            <div style="font-size:0.75rem; color:var(--sub); margin-top:4px;">
+              거래대금 ${(s.volume / 100000000).toFixed(0)}억
+            </div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:1rem; font-weight:700;">${s.price.toLocaleString()}원</div>
+            <div class="${s.rate >= 0 ? 'up' : 'down'}" style="font-size:0.85rem; font-weight:700; margin-top:2px;">
+              ${s.rate >= 0 ? '▲' : '▼'} ${Math.abs(s.rate).toFixed(2)}%
+            </div>
+          </div>
+        `;
+        list.appendChild(el);
+      });
+    }
+
+    function selectStock(s) {
+      selected = s;
+      updateSelectedUI();
+    }
+
+    function updateSelectedUI() {
+      if (!selected) return;
+      document.getElementById('target-name').innerText = `[${selected.market}] ${selected.name} (${selected.price.toLocaleString()}원)`;
+      document.getElementById('ai-title').innerText = selected.name;
+      calcTotal();
+
+      let aiAnalysis = "";
+      if (selected.rate > 3) {
+        aiAnalysis = `🔥 <strong>상승 수급 포착</strong><br>${selected.market} 상위 수급 유입으로 강한 상승 흐름(+${selected.rate.toFixed(2)}%)을 나타내고 있습니다.`;
+      } else if (selected.rate < -3) {
+        aiAnalysis = `⚠️ <strong>과매도 구간</strong><br>단기 매도세 증가로 -${Math.abs(selected.rate).toFixed(2)}% 하락 중입니다. 분할 매수 관점 접근이 유효합니다.`;
+      } else {
+        aiAnalysis = `➡️ <strong>횡보 상태</strong><br>주가가 매물대 내에서 안정적인 흐름을 유지 중입니다.`;
+      }
+      document.getElementById('ai-desc').innerHTML = aiAnalysis;
+    }
+
+    function calcTotal() {
+      if (!selected) return;
+      const qty = parseFloat(document.getElementById('qty').value) || 0;
+      document.getElementById('total-price').innerText = Math.round(qty * selected.price).toLocaleString();
+    }
+
+    function setFilter(filter, btn) {
+      currentFilter = filter;
+      document.querySelectorAll('.filter-bar button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      render();
+    }
+
+    function trade(type) {
+      if (!selected) return alert('종목을 선택하세요.');
+      const qty = parseFloat(document.getElementById('qty').value) || 0;
+      if (qty <= 0) return alert('수량을 입력하세요.');
+      const cost = qty * selected.price;
+
+      if (type === 'BUY') {
+        if (cash < cost) return alert('예수금이 부족합니다.');
+        cash -= cost;
+        
+        if (portfolio[selected.id]) {
+          const prevTotal = portfolio[selected.id].qty * portfolio[selected.id].avgPrice;
+          const newQty = portfolio[selected.id].qty + qty;
+          portfolio[selected.id].avgPrice = (prevTotal + cost) / newQty;
+          portfolio[selected.id].qty = newQty;
+        } else {
+          portfolio[selected.id] = { qty: qty, avgPrice: selected.price };
+        }
+      } else {
+        if (!portfolio[selected.id] || portfolio[selected.id].qty < qty) return alert('보유 수량이 부족합니다.');
+        cash += cost;
+        portfolio[selected.id].qty -= qty;
+        if (portfolio[selected.id].qty === 0) delete portfolio[selected.id];
+      }
+
+      renderPortfolioSummary();
+      updateDashboard();
+    }
+
+    function renderPortfolioSummary() {
+      const pf = document.getElementById('portfolio-summary');
+      const keys = Object.keys(portfolio);
+      if (!keys.length) return pf.innerText = '보유한 주식이 없습니다.';
+      pf.innerHTML = keys.map(id => {
+        const item = marketData.find(x => x.id === id);
+        const name = item ? item.name : id;
+        return `<div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+          <span>${name}</span>
+          <strong style="color:#fff;">${portfolio[id].qty}주</strong>
+        </div>`;
+      }).join('');
+    }
+
+    function updateDashboard() {
+      let totalStockEval = 0;
+      let totalStockBuy = 0;
+      const tbody = document.getElementById('dash-list');
+      const keys = Object.keys(portfolio);
+
+      if (!keys.length) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--sub); padding:30px;">보유 중인 주식이 없습니다.</td></tr>';
+      } else {
+        tbody.innerHTML = '';
+        keys.forEach(id => {
+          const item = marketData.find(x => x.id === id);
+          if (!item) return;
+          const holding = portfolio[id];
+          const buyAmt = holding.qty * holding.avgPrice;
+          const evalAmt = holding.qty * item.price;
+          const profit = evalAmt - buyAmt;
+          const rate = ((item.price - holding.avgPrice) / holding.avgPrice) * 100;
+
+          totalStockBuy += buyAmt;
+          totalStockEval += evalAmt;
+
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td style="font-weight:700;">${item.name}</td>
+            <td><span class="badge ${item.market === 'KOSPI' ? 'badge-kospi' : 'badge-kosdaq'}">${item.market}</span></td>
+            <td>${holding.qty.toLocaleString()} 주</td>
+            <td>${Math.round(holding.avgPrice).toLocaleString()} 원</td>
+            <td>${item.price.toLocaleString()} 원</td>
+            <td>${Math.round(evalAmt).toLocaleString()} 원</td>
+            <td class="${rate >= 0 ? 'up' : 'down'}" style="font-weight:700;">
+              ${rate >= 0 ? '+' : ''}${rate.toFixed(2)}%
+            </td>
+          `;
+          tbody.appendChild(tr);
+        });
+      }
+
+      const totalProfit = totalStockEval - totalStockBuy;
+      const totalProfitRate = totalStockBuy > 0 ? (totalProfit / totalStockBuy) * 100 : 0;
+      const totalAsset = cash + totalStockEval;
+
+      document.getElementById('dash-cash').innerText = `${Math.round(cash).toLocaleString()} 원`;
+      document.getElementById('dash-eval').innerText = `${Math.round(totalStockEval).toLocaleString()} 원`;
+      document.getElementById('dash-buy').innerText = `${Math.round(totalStockBuy).toLocaleString()} 원`;
+      
+      const profitEl = document.getElementById('dash-profit');
+      profitEl.innerText = `${totalProfit >= 0 ? '+' : ''}${Math.round(totalProfit).toLocaleString()} 원 (${totalProfitRate.toFixed(2)}%)`;
+      profitEl.className = `number ${totalProfit >= 0 ? 'up' : 'down'}`;
+
+      document.getElementById('header-total-asset').innerText = `${Math.round(totalAsset).toLocaleString()} 원`;
+    }
+  </script>
+</body>
+</html>
