@@ -2,10 +2,10 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>글로벌 모의투자 App (실시간 시세 연동)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>글로벌 모의투자 App</title>
   
-  <!-- PWA 매니페스트 (앱 설치 및 아이콘 설정) -->
+  <!-- PWA 매니페스트 및 앱 아이콘 설정 -->
   <link rel="manifest" id="manifest-placeholder">
   <meta name="theme-color" content="#0b0e14">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -25,30 +25,36 @@
       --accent: #6366f1;
       --accent-light: rgba(99, 102, 241, 0.15);
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif; }
-    body { background: var(--bg); color: var(--text); padding: 16px; max-width: 1200px; margin: 0 auto; }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+    body { background: var(--bg); color: var(--text); padding: 12px; max-width: 1200px; margin: 0 auto; padding-bottom: 40px; }
 
     /* Header & Summary Section */
     .header-card {
       background: linear-gradient(135deg, #1e1b4b 0%, #151921 100%);
       border: 1px solid rgba(99, 102, 241, 0.3);
-      padding: 20px 24px; border-radius: 16px;
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 16px; box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+      padding: 16px; border-radius: 16px;
+      display: flex; flex-direction: column; gap: 12px;
+      margin-bottom: 14px; box-shadow: 0 8px 20px rgba(0,0,0,0.3);
     }
-    .header-card h1 { font-size: 1.25rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
-    .asset-val { font-size: 1.5rem; font-weight: 800; color: #10b981; margin-top: 4px; }
+    @media (min-width: 600px) {
+      .header-card { flex-direction: row; justify-content: space-between; align-items: center; padding: 20px 24px; }
+    }
+    .header-card h1 { font-size: 1.2rem; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
+    .asset-val { font-size: 1.4rem; font-weight: 800; color: #10b981; margin-top: 2px; }
 
-    /* PWA Install Button Header */
-    .header-right { display: flex; align-items: center; gap: 16px; }
-    .install-btn {
-      display: none; align-items: center; gap: 6px;
-      background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-      color: #fff; border: none; padding: 8px 14px; border-radius: 20px;
-      font-size: 0.85rem; font-weight: 700; cursor: pointer;
-      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); transition: transform 0.2s;
+    .header-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .action-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: rgba(255, 255, 255, 0.06); color: var(--text); border: 1px solid var(--border);
+      padding: 8px 12px; border-radius: 10px; font-size: 0.8rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
     }
-    .install-btn:hover { transform: translateY(-2px); }
+    .action-btn:hover { background: rgba(255, 255, 255, 0.12); }
+    .install-btn {
+      display: none; background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
+      color: #fff; border: none; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4);
+    }
+    .reset-btn { color: #f87171; border-color: rgba(248, 113, 113, 0.3); }
+    .reset-btn:hover { background: rgba(248, 113, 113, 0.15); }
 
     .status-badge {
       display: inline-flex; align-items: center; gap: 6px;
@@ -59,10 +65,10 @@
     @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 
     /* Main Navigation */
-    .main-nav { display: flex; gap: 10px; margin-bottom: 16px; }
+    .main-nav { display: flex; gap: 8px; margin-bottom: 14px; }
     .main-nav button {
       flex: 1; padding: 12px; background: var(--card); color: var(--sub);
-      border: 1px solid var(--border); border-radius: 12px; font-size: 0.95rem;
+      border: 1px solid var(--border); border-radius: 12px; font-size: 0.9rem;
       font-weight: 700; cursor: pointer; transition: all 0.2s ease;
     }
     .main-nav button.active {
@@ -71,35 +77,36 @@
     }
 
     /* Search & Filter Bar */
-    .filter-wrapper { display: flex; flex-direction: column; gap: 10px; margin-bottom: 16px; }
+    .filter-wrapper { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
     .search-input {
       width: 100%; padding: 12px 16px; background: var(--card); border: 1px solid var(--border);
       border-radius: 12px; color: #fff; font-size: 0.95rem; outline: none; transition: border 0.2s;
     }
     .search-input:focus { border-color: var(--accent); }
 
-    .filter-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+    .filter-bar { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+    .filter-bar::-webkit-scrollbar { display: none; }
     .filter-bar button {
       background: rgba(255,255,255,0.04); color: var(--sub); border: 1px solid var(--border);
-      padding: 8px 16px; border-radius: 20px; font-size: 0.85rem; font-weight: 600;
+      padding: 8px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600;
       cursor: pointer; white-space: nowrap; transition: all 0.2s;
     }
     .filter-bar button.active { background: #fff; color: #000; border-color: #fff; }
 
     /* Layout Structure */
-    .layout { display: grid; grid-template-columns: 1fr; gap: 16px; }
+    .layout { display: grid; grid-template-columns: 1fr; gap: 14px; }
     @media (min-width: 900px) { .layout { grid-template-columns: 1fr 360px; } }
 
     /* Stock List Card Style */
-    .stock-list { display: flex; flex-direction: column; gap: 10px; max-height: 70vh; overflow-y: auto; padding-right: 4px; }
+    .stock-list { display: flex; flex-direction: column; gap: 8px; max-height: 65vh; overflow-y: auto; padding-right: 2px; }
     .stock-card {
       background: var(--card); border: 1px solid var(--border); border-radius: 14px;
-      padding: 14px 18px; display: flex; justify-content: space-between; align-items: center;
-      cursor: pointer; transition: all 0.15s ease;
+      padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;
+      cursor: pointer; transition: background 0.15s ease;
     }
-    .stock-card:hover { background: var(--card-hover); border-color: rgba(255, 255, 255, 0.2); transform: translateY(-1px); }
+    .stock-card:active { background: var(--card-hover); }
     
-    .badge { font-size: 0.7rem; padding: 3px 8px; border-radius: 6px; margin-right: 6px; font-weight: 700; display: inline-block; }
+    .badge { font-size: 0.65rem; padding: 2px 6px; border-radius: 4px; margin-right: 6px; font-weight: 700; display: inline-block; }
     .badge-kospi { background: rgba(255, 77, 77, 0.15); color: var(--up); }
     .badge-kosdaq { background: rgba(69, 143, 255, 0.15); color: var(--down); }
 
@@ -107,40 +114,41 @@
     .down { color: var(--down); }
 
     /* Side Panels */
-    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 18px; margin-bottom: 16px; }
-    .panel-title { font-size: 0.9rem; color: var(--sub); font-weight: 600; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .panel { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+    .panel-title { font-size: 0.85rem; color: var(--sub); font-weight: 600; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
     
     .ai-box {
       background: var(--accent-light); border: 1px solid var(--accent);
-      padding: 14px; border-radius: 12px; font-size: 0.85rem; line-height: 1.5; color: #e0e7ff;
+      padding: 12px; border-radius: 12px; font-size: 0.82rem; line-height: 1.4; color: #e0e7ff;
     }
 
     input[type="number"] {
       width: 100%; padding: 12px; background: rgba(0, 0, 0, 0.3);
-      border: 1px solid var(--border); color: #fff; margin: 10px 0;
+      border: 1px solid var(--border); color: #fff; margin: 8px 0;
       text-align: right; border-radius: 10px; font-size: 1rem; font-weight: 600;
+      outline: none;
     }
-    input[type="number"]:focus { outline: none; border-color: var(--accent); }
+    input[type="number"]:focus { border-color: var(--accent); }
 
     .btn-group { display: flex; gap: 10px; margin-top: 10px; }
     .btn-group button {
       flex: 1; padding: 14px; border: none; border-radius: 10px;
-      font-size: 0.95rem; font-weight: 700; color: #fff; cursor: pointer; transition: opacity 0.2s;
+      font-size: 0.95rem; font-weight: 700; color: #fff; cursor: pointer;
     }
-    .btn-group button:hover { opacity: 0.9; }
     .buy { background: var(--up); box-shadow: 0 4px 12px rgba(255, 77, 77, 0.2); }
     .sell { background: var(--down); box-shadow: 0 4px 12px rgba(69, 143, 255, 0.2); }
 
     /* Dashboard UI */
-    .dash-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px; }
-    .dash-card { background: var(--card); border: 1px solid var(--border); padding: 18px; border-radius: 14px; }
-    .dash-card .title { font-size: 0.8rem; color: var(--sub); font-weight: 600; }
-    .dash-card .number { font-size: 1.25rem; font-weight: 700; margin-top: 6px; }
+    .dash-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
+    .dash-card { background: var(--card); border: 1px solid var(--border); padding: 14px; border-radius: 14px; }
+    .dash-card .title { font-size: 0.75rem; color: var(--sub); font-weight: 600; }
+    .dash-card .number { font-size: 1.1rem; font-weight: 700; margin-top: 4px; word-break: break-all; }
 
-    .portfolio-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.88rem; }
-    .portfolio-table th, .portfolio-table td { padding: 12px; text-align: right; border-bottom: 1px solid var(--border); }
+    .table-container { width: 100%; overflow-x: auto; }
+    .portfolio-table { width: 100%; border-collapse: collapse; margin-top: 4px; font-size: 0.85rem; white-space: nowrap; }
+    .portfolio-table th, .portfolio-table td { padding: 10px 8px; text-align: right; border-bottom: 1px solid var(--border); }
     .portfolio-table th:first-child, .portfolio-table td:first-child { text-align: left; }
-    .portfolio-table th { color: var(--sub); font-weight: 600; font-size: 0.8rem; }
+    .portfolio-table th { color: var(--sub); font-weight: 600; font-size: 0.75rem; }
   </style>
 </head>
 <body>
@@ -149,17 +157,15 @@
   <div class="header-card">
     <div>
       <h1>📈 국내 모의투자</h1>
-      <div style="font-size: 0.8rem; color: var(--sub); margin-top: 4px; display: flex; align-items: center; gap: 8px;">
-        <span>KOSPI / KOSDAQ 실시간 시뮬레이션</span>
-        <span class="status-badge" id="api-status"><span class="status-dot"></span>실시간 API 동기화 중</span>
+      <div style="font-size: 0.75rem; color: var(--sub); margin-top: 4px; display: flex; align-items: center; gap: 6px;">
+        <span class="status-badge" id="api-status"><span class="status-dot"></span>실시간 동기화 중</span>
       </div>
     </div>
-    <div class="header-right">
-      <button class="install-btn" id="install-btn" onclick="installApp()">
-        <span>📲</span> 앱 설치
-      </button>
+    <div class="header-actions">
+      <button class="action-btn install-btn" id="install-btn" onclick="installApp()">📲 앱 설치</button>
+      <button class="action-btn reset-btn" onclick="resetAccount()">⚙️ 초기화</button>
       <div style="text-align: right;">
-        <div style="font-size: 0.8rem; color: var(--sub);">총 평가 자산</div>
+        <div style="font-size: 0.75rem; color: var(--sub);">총 평가 자산</div>
         <div class="asset-val" id="header-total-asset">1,000,000,000 원</div>
       </div>
     </div>
@@ -167,18 +173,18 @@
 
   <!-- Main Tabs -->
   <div class="main-nav">
-    <button class="active" onclick="switchMainTab('market', this)">📊 주식 거래소</button>
-    <button onclick="switchMainTab('dashboard', this)">💼 내 자산 리포트</button>
+    <button class="active" onclick="switchMainTab('market', this)">📊 거래소</button>
+    <button onclick="switchMainTab('dashboard', this)">💼 내 자산</button>
   </div>
 
   <!-- Tab 1: 주식 거래소 -->
   <div id="tab-market">
     <div class="filter-wrapper">
-      <input type="text" id="search-input" class="search-input" placeholder="🔍 종목명 또는 종목코드(6자리) 검색..." oninput="onSearchInput()">
+      <input type="text" id="search-input" class="search-input" placeholder="🔍 종목명 또는 종목코드 검색..." oninput="onSearchInput()">
       <div class="filter-bar">
         <button class="active" onclick="setFilter('all', this)">전체</button>
-        <button onclick="setFilter('kospi', this)">🔴 코스피 (KOSPI)</button>
-        <button onclick="setFilter('kosdaq', this)">🔵 코스닥 (KOSDAQ)</button>
+        <button onclick="setFilter('kospi', this)">🔴 코스피</button>
+        <button onclick="setFilter('kosdaq', this)">🔵 코스닥</button>
         <button onclick="setFilter('gainers', this)">🔥 급상승</button>
         <button onclick="setFilter('losers', this)">📉 급하락</button>
       </div>
@@ -191,16 +197,16 @@
         <!-- AI Analysis -->
         <div class="panel">
           <div class="panel-title">🤖 AI 종목 진단 리포트</div>
-          <div id="ai-title" style="font-size: 1.05rem; font-weight: 700; margin-bottom: 8px;">종목을 선택하세요</div>
-          <div class="ai-box" id="ai-desc">목록에서 종목을 선택하면 실시간 수급 및 변동 폭을 분석해 드립니다.</div>
+          <div id="ai-title" style="font-size: 1rem; font-weight: 700; margin-bottom: 6px;">종목을 선택하세요</div>
+          <div class="ai-box" id="ai-desc">목록에서 종목을 선택하면 실시간 변동 폭을 분석해 드립니다.</div>
         </div>
 
         <!-- Trading Panel -->
         <div class="panel">
           <div class="panel-title">⚡ 빠른 주문</div>
-          <div id="target-name" style="font-weight: 700; color: var(--sub);">선택된 종목 없음</div>
+          <div id="target-name" style="font-weight: 700; color: var(--sub); font-size: 0.9rem;">선택된 종목 없음</div>
           <input type="number" id="qty" value="1" min="1" oninput="calcTotal()">
-          <div style="font-size: 0.85rem; text-align: right; color: var(--sub); margin-bottom: 12px;">
+          <div style="font-size: 0.82rem; text-align: right; color: var(--sub); margin-bottom: 10px;">
             주문 예정 금액: <span id="total-price" style="color: #fff; font-weight: 700;">0</span> 원
           </div>
           <div class="btn-group">
@@ -212,7 +218,7 @@
         <!-- Quick Balance Panel -->
         <div class="panel">
           <div class="panel-title">보유 요약</div>
-          <div id="portfolio-summary" style="font-size: 0.85rem; color: var(--sub);">보유한 주식이 없습니다.</div>
+          <div id="portfolio-summary" style="font-size: 0.82rem; color: var(--sub);">보유한 주식이 없습니다.</div>
         </div>
       </div>
     </div>
@@ -226,7 +232,7 @@
         <div class="number" id="dash-cash">0 원</div>
       </div>
       <div class="dash-card">
-        <div class="title">총 주식 평가금액</div>
+        <div class="title">주식 평가금액</div>
         <div class="number" id="dash-eval">0 원</div>
       </div>
       <div class="dash-card">
@@ -234,46 +240,46 @@
         <div class="number" id="dash-buy">0 원</div>
       </div>
       <div class="dash-card">
-        <div class="title">실시간 평가 손익 / 수익률</div>
+        <div class="title">평가 손익 / 수익률</div>
         <div class="number" id="dash-profit">0 원 (0.00%)</div>
       </div>
     </div>
 
     <div class="panel">
       <div class="panel-title">📊 보유 종목 실시간 평가 현황</div>
-      <table class="portfolio-table">
-        <thead>
-          <tr>
-            <th>종목명</th>
-            <th>시장</th>
-            <th>보유수량</th>
-            <th>평균단가</th>
-            <th>현재가</th>
-            <th>평가금액</th>
-            <th>손익률</th>
-          </tr>
-        </thead>
-        <tbody id="dash-list">
-          <tr><td colspan="7" style="text-align:center; color:var(--sub); padding:30px;">보유 중인 주식이 없습니다.</td></tr>
-        </tbody>
-      </table>
+      <div class="table-container">
+        <table class="portfolio-table">
+          <thead>
+            <tr>
+              <th>종목명</th>
+              <th>시장</th>
+              <th>보유수량</th>
+              <th>평균단가</th>
+              <th>현재가</th>
+              <th>평가금액</th>
+              <th>손익률</th>
+            </tr>
+          </thead>
+          <tbody id="dash-list">
+            <tr><td colspan="7" style="text-align:center; color:var(--sub); padding:30px;">보유 중인 주식이 없습니다.</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </div>
 
   <script>
     // -------------------------------------------------------------
-    // PWA Manifest 및 앱 아이콘 Dynamic Injector
+    // PWA Manifest 및 앱 아이콘 설정
     // -------------------------------------------------------------
     const svgIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none"><rect width="512" height="512" rx="128" fill="#151921"/><path d="M112 352L208 240L288 304L400 160" stroke="#ff4d4d" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/><path d="M320 160H400V240" stroke="#ff4d4d" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     const iconUrl = 'data:image/svg+xml;base64,' + btoa(svgIcon);
 
-    // Apple Touch Icon 추가
     const appleIcon = document.createElement('link');
     appleIcon.rel = 'apple-touch-icon';
     appleIcon.href = iconUrl;
     document.head.appendChild(appleIcon);
 
-    // Manifest JSON 생성
     const manifestData = {
       name: "글로벌 모의투자 App",
       short_name: "모의투자",
@@ -281,14 +287,11 @@
       display: "standalone",
       background_color: "#0b0e14",
       theme_color: "#0b0e14",
-      icons: [
-        { src: iconUrl, sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }
-      ]
+      icons: [{ src: iconUrl, sizes: "512x512", type: "image/svg+xml", purpose: "any maskable" }]
     };
     const manifestBlob = new Blob([JSON.stringify(manifestData)], { type: 'application/json' });
     document.getElementById('manifest-placeholder').href = URL.createObjectURL(manifestBlob);
 
-    // PWA 설치 프롬프트 처리
     let deferredPrompt = null;
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -301,17 +304,44 @@
       if (!deferredPrompt) return;
       deferredPrompt.prompt();
       const { outcome } = await deferredPrompt.userChoice;
-      if (outcome === 'accepted') {
-        document.getElementById('install-btn').style.display = 'none';
-      }
+      if (outcome === 'accepted') document.getElementById('install-btn').style.display = 'none';
       deferredPrompt = null;
     }
 
     // -------------------------------------------------------------
-    // 모의투자 메인 로직
+    // 데이터 영구 저장 (localStorage) 및 모의투자 상태 관리
     // -------------------------------------------------------------
     let cash = 1000000000;
     let portfolio = {};
+
+    function loadUserData() {
+      const savedCash = localStorage.getItem('sim_cash');
+      const savedPf = localStorage.getItem('sim_portfolio');
+      if (savedCash !== null) cash = parseFloat(savedCash);
+      if (savedPf !== null) {
+        try { portfolio = JSON.parse(savedPf); } catch(e) { portfolio = {}; }
+      }
+    }
+
+    function saveUserData() {
+      localStorage.setItem('sim_cash', cash);
+      localStorage.setItem('sim_portfolio', JSON.stringify(portfolio));
+    }
+
+    function resetAccount() {
+      if (confirm("정말로 계좌를 초기화하시겠습니까? 모든 자산과 거래 내역이 처음 상태로 돌아갑니다.")) {
+        localStorage.removeItem('sim_cash');
+        localStorage.removeItem('sim_portfolio');
+        cash = 1000000000;
+        portfolio = {};
+        renderPortfolioSummary();
+        updateDashboard();
+        alert("계좌가 초기화되었습니다.");
+      }
+    }
+
+    loadUserData();
+
     let selected = null;
     let currentFilter = 'all';
     let searchQuery = '';
@@ -428,6 +458,7 @@
     });
 
     render();
+    renderPortfolioSummary();
     updateDashboard();
 
     async function fetchRealtimePrices() {
@@ -449,10 +480,10 @@
             }
           });
 
-          document.getElementById('api-status').innerHTML = `<span class="status-dot"></span>실시간 API 연동 완료 (${new Date().toLocaleTimeString('ko-KR')})`;
+          document.getElementById('api-status').innerHTML = `<span class="status-dot"></span>실시간 동기화 완료`;
           document.getElementById('api-status').style.color = '#10b981';
         } else {
-          throw new Error('데이터 구조 비정상');
+          throw new Error('데이터 비정상');
         }
       } catch (err) {
         marketData.forEach(s => {
@@ -461,7 +492,7 @@
           s.price = Math.max(100, Math.round(s.price * (1 + delta * 0.01)));
         });
 
-        document.getElementById('api-status').innerHTML = `<span class="status-dot" style="background:#f59e0b;"></span>실시간 시뮬레이션 모드`;
+        document.getElementById('api-status').innerHTML = `<span class="status-dot" style="background:#f59e0b;"></span>시뮬레이션 모드`;
         document.getElementById('api-status').style.color = '#f59e0b';
       }
 
@@ -528,13 +559,13 @@
               <span class="badge ${s.market === 'KOSPI' ? 'badge-kospi' : 'badge-kosdaq'}">${s.market}</span>
               <strong>${s.name}</strong> <span style="font-size:0.75rem; color:var(--sub);">${s.symbol}</span>
             </div>
-            <div style="font-size:0.75rem; color:var(--sub); margin-top:4px;">
+            <div style="font-size:0.72rem; color:var(--sub); margin-top:2px;">
               거래대금 ${(s.volume / 100000000).toFixed(0)}억
             </div>
           </div>
           <div style="text-align:right;">
-            <div style="font-size:1rem; font-weight:700;">${s.price.toLocaleString()}원</div>
-            <div class="${s.rate >= 0 ? 'up' : 'down'}" style="font-size:0.85rem; font-weight:700; margin-top:2px;">
+            <div style="font-size:0.95rem; font-weight:700;">${s.price.toLocaleString()}원</div>
+            <div class="${s.rate >= 0 ? 'up' : 'down'}" style="font-size:0.8rem; font-weight:700; margin-top:2px;">
               ${s.rate >= 0 ? '▲' : '▼'} ${Math.abs(s.rate).toFixed(2)}%
             </div>
           </div>
@@ -603,8 +634,10 @@
         if (portfolio[selected.id].qty === 0) delete portfolio[selected.id];
       }
 
+      saveUserData();
       renderPortfolioSummary();
       updateDashboard();
+      alert(type === 'BUY' ? `${selected.name} ${qty}주 매수 완료!` : `${selected.name} ${qty}주 매도 완료!`);
     }
 
     function renderPortfolioSummary() {
@@ -614,7 +647,7 @@
       pf.innerHTML = keys.map(id => {
         const item = marketData.find(x => x.id === id);
         const name = item ? item.name : id;
-        return `<div style="display:flex; justify-content:space-between; margin-bottom:6px;">
+        return `<div style="display:flex; justify-content:space-between; margin-bottom:4px;">
           <span>${name}</span>
           <strong style="color:#fff;">${portfolio[id].qty}주</strong>
         </div>`;
